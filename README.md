@@ -27,6 +27,14 @@ As a developer, I can treat the first row as headers and have them normalized (t
 
 Notes:
 handle quoted fields correctly (commas/newlines inside quotes, doubled quotes), add column-count checks, support streaming for big files, and provide schema/validation with strict vs. lenient error modes. Prompt A pushed robustness items—CRLF line endings, BOM stripping, encoding quirks, and explicit delimiter/quote options. Prompt B focused on developer ergonomics—structured row/column errors, header normalization/mapping, and a clear policy for null/empty cells. What stuck: fix quoted fields first, add streaming, and emit actionable errors.
+
+# Reflection Questions
+
+1) A CSV parser is “correct” if it turns a CSV file into the same rows and cells you’d expect every time. Same input, same output; row order and column order are preserved. Newlines end rows unless they’re inside quotes. Commas only split fields when they’re not inside quotes. A doubled quote "" becomes a single ". Empty fields (including trailing ones) stay as empty strings. The parser shouldn’t guess types, everything is strings unless the caller supplies a schema, and with a schema it shouldn’t throw. It should return typed rows plus a clear list of validation errors where rows + errors = total input rows, with row numbers you can map back to the file.
+
+2) If I had a random CSV generator, I’d use it for property-style checks. I’d generate out random tables (sizes, weird characters, quoted/unquoted, doubled quotes), stringify them by the appendix rules, and require that parse(stringify(table)) round-trips cell-for-cell. I’d also check that parsing A then B and concatenating equals parsing A++B. For negative tests, I’d inject unbalanced/stray quotes or ragged rows and assert no throws, correct 1-based row numbers in errors, and preserved order for the good rows. I’d seed the generator so failures are reproducible.
+
+3) Compared to past assignments, this one had less concrete direction and a more design freedom as I wasn’t starting from concepts I already knew well. The biggest surprise was the header row failing a tuple schema, which made me treat schema mode as “data rows only” and never throw on validation. As for the bugs, I changed parseCSV’s signature and broke run-parser.ts (fixed by updating the call and handling the union); my first error reporting was too vague, so I switched to {row, messages, raw}; and I hit one path issue in tests fixed by writing files with path.join(__dirname, …). Avoiding as casts, not logging from the parser, and keeping tests tiny and focused kept the rest under control.
 ### Design Choices
 
 ### 1340 Supplement
@@ -43,5 +51,5 @@ handle quoted fields correctly (commas/newlines inside quotes, doubled quotes), 
 #### Team members and contributions (include cs logins):
 
 #### Collaborators (cslogins of anyone you worked with on this project and/or generative AI):
-#### Total estimated time it took to complete project:
-#### Link to GitHub Repo:  
+#### Total estimated time it took to complete project: 5 hours
+#### Link to GitHub Repo: 
