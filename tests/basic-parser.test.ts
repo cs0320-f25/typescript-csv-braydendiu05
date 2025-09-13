@@ -65,8 +65,9 @@ test("validates & transforms rows with Zod schema", async () => {
   const PersonRow = z
     .tuple([z.string(), z.coerce.number()])
     .transform(([name, age]) => ({ name, age }));
-
+  await expect(parseCSV(PEOPLE_CSV_PATH, PersonRow)).resolves.toBeDefined();
   const result = await parseCSV(PEOPLE_CSV_PATH, PersonRow);
+  expect(result.rows.length + result.errors.length).toBe(5);
 
   // typed objects in order (header + Bob('thirty') become errors)
   expect(result.rows).toEqual([

@@ -36,6 +36,7 @@ handle quoted fields correctly (commas/newlines inside quotes, doubled quotes), 
 
 3) Compared to past assignments, this one had less concrete direction and a more design freedom as I wasn’t starting from concepts I already knew well. The biggest surprise was the header row failing a tuple schema, which made me treat schema mode as “data rows only” and never throw on validation. As for the bugs, I changed parseCSV’s signature and broke run-parser.ts (fixed by updating the call and handling the union); my first error reporting was too vague, so I switched to {row, messages, raw}; and I hit one path issue in tests fixed by writing files with path.join(__dirname, …). Avoiding as casts, not logging from the parser, and keeping tests tiny and focused kept the rest under control.
 ### Design Choices
+For this sprint, my main design choice was to keep the parser simple and flexible while separating concerns. The parser itself only handles splitting rows and cells, leaving validation and type conversion entirely to the caller through a Zod schema. This way, the parser remains agnostic to the actual data format and different callers can supply schemas suited to their needs. I also chose to return structured error objects instead of throwing exceptions so that parsing can continue even if some rows fail validation. Finally, I preserved the original behavior of returning string[][] when no schema is provided, ensuring backward compatibility while adding schema support as an optional feature.
 
 ### 1340 Supplement
 
@@ -45,11 +46,12 @@ handle quoted fields correctly (commas/newlines inside quotes, doubled quotes), 
 
 - #### 3. Overall experience, Bugs encountered and resolved
 #### Errors/Bugs:
-#### Tests:
+#### Tests: 
+My test suite covers three main areas. First, there are baseline checks to confirm that parseCSV correctly reads rows into arrays of strings and that each row is an array. Second, Task A adds tests for CSV specification edge cases such as quoted commas, doubled quotes, and empty fields. Two of these tests (quoted commas and doubled quotes) are expected to fail in this spring since the parser doesn’t yet handle quoting. These failures are intentional to show missing functionality that will be fixed later. Finally, Task C introduces schema validation and transformation with Zod. Here, tests check that valid rows are transformed into typed objects, invalid rows are reported in the errors array (without exceptions), and the legacy behavior of returning string[][] without a schema is still preserved.
 #### How To…
+To run the tests, install dependencies with npm install and then run npm test from the project root. This will execute all Jest tests, including the parser tests. If you only want to run the parser tests specifically, you can use npx jest basic-parser.test.ts. The tests make use of both the provided data/people.csv file and small temporary CSV files generated during the run.
+#### Team members and contributions (include cs logins): N/A
 
-#### Team members and contributions (include cs logins):
-
-#### Collaborators (cslogins of anyone you worked with on this project and/or generative AI):
+#### Collaborators (cslogins of anyone you worked with on this project and/or generative AI): used copilot for the enhancement ideas (cited above which one)
 #### Total estimated time it took to complete project: 5 hours
-#### Link to GitHub Repo: 
+#### Link to GitHub Repo: https://github.com/cs0320-f25/typescript-csv-braydendiu05
