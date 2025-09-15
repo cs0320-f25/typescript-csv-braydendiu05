@@ -5,8 +5,9 @@ import { z } from "zod";
 const PEOPLE_CSV_PATH = path.join(__dirname, "../data/people.csv");
 
 test("parseCSV yields arrays", async () => {
-  const results = await parseCSV(PEOPLE_CSV_PATH)
-  
+  const results = await parseCSV(PEOPLE_CSV_PATH);
+  if (!Array.isArray(results)) throw new Error("expected string[][]");
+
   expect(results).toHaveLength(5);
   expect(results[0]).toEqual(["name", "age"]);
   expect(results[1]).toEqual(["Alice", "23"]);
@@ -16,8 +17,10 @@ test("parseCSV yields arrays", async () => {
 });
 
 test("parseCSV yields only arrays", async () => {
-  const results = await parseCSV(PEOPLE_CSV_PATH)
-  for(const row of results) {
+  const results = await parseCSV(PEOPLE_CSV_PATH);
+  if (!Array.isArray(results)) throw new Error("expected string[][]");
+
+  for (const row of results) {
     expect(Array.isArray(row)).toBe(true);
   }
 });
@@ -29,6 +32,8 @@ test("quoted comma stays in one field", async () => {
   fs.writeFileSync(p, 'first,notes\nCaesar,"veni, vidi, vici"\n', "utf8");
 
   const rows = await parseCSV(p);
+  if (!Array.isArray(rows)) throw new Error("expected string[][]"); // narrow
+
   expect(rows).toEqual([
     ["first", "notes"],
     ["Caesar", "veni, vidi, vici"],
@@ -40,6 +45,8 @@ test('doubled quotes unescape to a single quote', async () => {
   fs.writeFileSync(p, 'quote,age\n"She said ""hi""",42\n', "utf8");
 
   const rows = await parseCSV(p);
+  if (!Array.isArray(rows)) throw new Error("expected string[][]"); // narrow
+
   expect(rows).toEqual([
     ["quote", "age"],
     ['She said "hi"', "42"],
@@ -51,6 +58,8 @@ test("empty fields preserved", async () => {
   fs.writeFileSync(p, "a,b,c,d\n1,2,,4\n5,,,\n", "utf8");
 
   const rows = await parseCSV(p);
+  if (!Array.isArray(rows)) throw new Error("expected string[][]"); // narrow
+
   expect(rows).toEqual([
     ["a", "b", "c", "d"],
     ["1", "2", "", "4"],
@@ -65,27 +74,29 @@ test("validates & transforms rows with Zod schema", async () => {
   const PersonRow = z
     .tuple([z.string(), z.coerce.number()])
     .transform(([name, age]) => ({ name, age }));
+
   await expect(parseCSV(PEOPLE_CSV_PATH, PersonRow)).resolves.toBeDefined();
+
   const result = await parseCSV(PEOPLE_CSV_PATH, PersonRow);
+  // Narrow to the schema result branch
+  if (!("rows" in result)) throw new Error("expected {rows, errors} result");
+
   expect(result.rows.length + result.errors.length).toBe(5);
 
-  // typed objects in order (header + Bob('thirty') become errors)
   expect(result.rows).toEqual([
     { name: "Alice", age: 23 },
     { name: "Charlie", age: 25 },
     { name: "Nim", age: 22 },
   ]);
 
-  // row indices are 1-based: header=1, Alice=2, Bob=3, Charlie=4, Nim=5
-  expect(result.errors.map(e => e.row)).toEqual([1, 3]);
-  expect(result.errors.every(e => Array.isArray(e.messages))).toBe(true);
+  expect(result.errors.map((e) => e.row)).toEqual([1, 3]);
+  expect(result.errors.every((e) => Array.isArray(e.messages))).toBe(true);
 });
 
 // 2) without a schema: legacy string[][]
 test("omitting schema returns string[][]", async () => {
   const res = await parseCSV(PEOPLE_CSV_PATH);
 
-  // narrow the union without casts
   expect(Array.isArray(res)).toBe(true);
   if (!Array.isArray(res)) throw new Error("expected string[][]");
 
